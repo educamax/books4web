@@ -120,7 +120,11 @@ async function initializeApp() {
                 // Transformar cada arquivo em um flipbook
                 const flipbooks = folders.map(item => {
                     const name = item.name.split('/')[0];
-                    const viewUrl = `${req.protocol}://${req.get('host')}/view/${name}`;
+                    // Usar a URL do Vercel em produção
+                    const baseUrl = process.env.VERCEL_URL 
+                        ? `https://${process.env.VERCEL_URL}`
+                        : `${req.protocol}://${req.get('host')}`;
+                    const viewUrl = `${baseUrl}/view/${name}`;
                     console.log('URL gerada para', name + ':', viewUrl);
                     return {
                         name,
@@ -647,7 +651,11 @@ async function initializeApp() {
 </html>`);
                 });
 
-                const viewUrl = `${req.protocol}://${req.get('host')}/view/${flipbookName}`;
+                // Usar a URL do Vercel em produção
+                const baseUrl = process.env.VERCEL_URL 
+                    ? `https://${process.env.VERCEL_URL}`
+                    : `${req.protocol}://${req.get('host')}`;
+                const viewUrl = `${baseUrl}/view/${flipbookName}`;
                 console.log('URL do Flipbook:', viewUrl);
 
                 const iframeCode = `<iframe src="${viewUrl}" width="100%" height="600" frameborder="0" allow="fullscreen"></iframe>`;
