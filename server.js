@@ -10,7 +10,12 @@ const port = process.env.PORT || 3000;
 
 // Função para garantir que os diretórios existam
 async function ensureDirectoriesExist() {
-    const baseDir = process.env.VERCEL ? '/tmp' : path.join(__dirname, 'public');
+    // No Vercel, não precisamos criar diretórios físicos
+    if (process.env.VERCEL) {
+        return '/tmp';
+    }
+
+    const baseDir = path.join(__dirname, 'public');
     const dirs = [
         baseDir,
         path.join(baseDir, 'uploads'),
@@ -56,8 +61,10 @@ const upload = multer({
 // Inicialização assíncrona
 async function initializeApp() {
     try {
-        baseDirectory = await ensureDirectoriesExist();
+        // No Vercel, não precisamos esperar pela criação de diretórios
+        baseDirectory = process.env.VERCEL ? '/tmp' : await ensureDirectoriesExist();
         console.log('Diretório base:', baseDirectory);
+        console.log('Ambiente:', process.env.NODE_ENV);
         console.log('Supabase URL:', process.env.SUPABASE_URL);
 
         // Verificar se o bucket existe
