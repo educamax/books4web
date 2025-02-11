@@ -115,22 +115,26 @@ async function initializeApp() {
 
                 if (error) throw error;
 
-                // Filtrar apenas os diretórios (excluir arquivos soltos)
-                const uniqueFolders = [...new Set(folders
-                    .filter(item => item.name.includes('/'))
-                    .map(item => item.name.split('/')[0]))];
+                console.log('Arquivos encontrados no Supabase:', folders);
 
-                const flipbooks = uniqueFolders.map(name => {
+                // Transformar cada arquivo em um flipbook
+                const flipbooks = folders.map(item => {
+                    const name = item.name.split('/')[0];
                     const viewUrl = `${req.protocol}://${req.get('host')}/view/${name}`;
+                    console.log('URL gerada para', name + ':', viewUrl);
                     return {
                         name,
                         url: viewUrl
                     };
                 });
 
-                res.json(flipbooks);
+                // Remover duplicatas baseado no nome
+                const uniqueFlipbooks = Array.from(new Map(flipbooks.map(item => [item.name, item])).values());
+
+                console.log('Flipbooks processados:', uniqueFlipbooks);
+                res.json(uniqueFlipbooks);
             } catch (error) {
-                console.error('Erro ao listar flipbooks:', error);
+                console.error('Erro detalhado ao listar flipbooks:', error);
                 res.status(500).json({ error: 'Erro ao listar flipbooks', details: error.message });
             }
         });
@@ -658,6 +662,33 @@ async function initializeApp() {
             } catch (error) {
                 console.error('Erro detalhado:', error);
                 res.status(500).json({ error: 'Erro ao processar o PDF.' });
+            }
+        });
+
+        // Rota temporária para debug
+        app.get('/debug-storage', async (req, res) => {
+            try {
+                console.log('Listando todo o conteúdo do bucket...');
+                const { data, error } = await supabase.storage
+                    .from('flipbooks')
+                    .list('', {
+                        limit: 100,
+                        offset: 0,
+                        sortBy: { column: 'name', order: 'asc' }
+                    });
+
+                if (error) {
+                    console.error('Erro ao listar bucket:', error);
+                    throw error;
+                }
+
+                console.log('Conteúdo completo do bucket:', data);
+                res.json({
+                    message: 'Conteúdo do bucket',
+                    data: data
+                });
+            } catch (error) {
+                res.status(500).json({ error: error.message });
             }
         });
 
