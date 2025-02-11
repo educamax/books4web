@@ -105,7 +105,7 @@ async function initializeApp() {
         app.get('/list-flipbooks', async (req, res) => {
             try {
                 console.log('Listando flipbooks do Supabase...');
-                const { data: folders } = await supabase.storage
+                const { data: folders, error } = await supabase.storage
                     .from('flipbooks')
                     .list('', {
                         limit: 100,
@@ -113,19 +113,20 @@ async function initializeApp() {
                         sortBy: { column: 'name', order: 'asc' }
                     });
 
-                const flipbooks = folders
-                    .filter(item => item.metadata && item.metadata.mimetype === 'text/html')
-                    .map(item => {
-                        const name = item.name.replace('/index.html', '');
-                        const { data: { publicUrl } } = supabase.storage
-                            .from('flipbooks')
-                            .getPublicUrl(`${name}/index.html`);
-                        
-                        return {
-                            name,
-                            url: publicUrl
-                        };
-                    });
+                if (error) throw error;
+
+                // Filtrar apenas os diretórios (excluir arquivos soltos)
+                const uniqueFolders = [...new Set(folders
+                    .filter(item => item.name.includes('/'))
+                    .map(item => item.name.split('/')[0]))];
+
+                const flipbooks = uniqueFolders.map(name => {
+                    const viewUrl = `${req.protocol}://${req.get('host')}/view/${name}`;
+                    return {
+                        name,
+                        url: viewUrl
+                    };
+                });
 
                 res.json(flipbooks);
             } catch (error) {
