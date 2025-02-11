@@ -7,6 +7,24 @@ const fs = require('fs').promises;
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Função para garantir que os diretórios existam
+async function ensureDirectoriesExist() {
+    const dirs = [
+        path.join(__dirname, 'public'),
+        path.join(__dirname, 'public/uploads'),
+        path.join(__dirname, 'public/flipbooks')
+    ];
+
+    for (const dir of dirs) {
+        try {
+            await fs.access(dir);
+        } catch {
+            await fs.mkdir(dir, { recursive: true });
+            console.log('Diretório criado:', dir);
+        }
+    }
+}
+
 // Função para sanitizar o nome do flipbook
 function sanitizeFlipbookName(name) {
     return name.toLowerCase()
@@ -17,9 +35,13 @@ function sanitizeFlipbookName(name) {
 
 // Configuração do Multer para upload de arquivos
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        // No Vercel, precisamos usar /tmp para arquivos temporários
-        const uploadDir = process.env.VERCEL ? '/tmp' : 'public/uploads/';
+    destination: async (req, file, cb) => {
+        const uploadDir = path.join(__dirname, 'public/uploads');
+        try {
+            await fs.access(uploadDir);
+        } catch {
+            await fs.mkdir(uploadDir, { recursive: true });
+        }
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
@@ -41,23 +63,26 @@ const upload = multer({
     }
 });
 
+// Garantir que os diretórios existam ao iniciar o servidor
+ensureDirectoriesExist().then(() => {
+    console.log('Diretórios verificados e criados se necessário');
+}).catch(console.error);
+
 // Servir arquivos estáticos
+app.use(express.static(path.join(__dirname, 'public')));
 app.use('/flipbooks', express.static(path.join(__dirname, 'public/flipbooks')));
-app.use(express.static('public'));
 app.use(express.json());
 
 // Rota para verificar se o nome já existe
 app.get('/check-name/:name', async (req, res) => {
     try {
         const name = sanitizeFlipbookName(req.params.name);
-        const flipbookDir = path.join('public/flipbooks', name);
+        const flipbookDir = path.join(__dirname, 'public/flipbooks', name);
         
         try {
             await fs.access(flipbookDir);
-            // Se não lançar erro, significa que o diretório existe
             res.json({ exists: true });
         } catch {
-            // Se lançar erro, significa que o diretório não existe
             res.json({ exists: false });
         }
     } catch (error) {
@@ -82,10 +107,7 @@ app.post('/upload', upload.single('pdf'), async (req, res) => {
         }
 
         const flipbookName = sanitizeFlipbookName(req.body.flipbookName);
-        
-        // No Vercel, usamos um diretório temporário diferente
-        const baseDir = process.env.VERCEL ? '/tmp' : 'public';
-        const flipbookDir = path.join(baseDir, 'flipbooks', flipbookName);
+        const flipbookDir = path.join(__dirname, 'public/flipbooks', flipbookName);
         
         try {
             await fs.access(flipbookDir);
@@ -94,25 +116,17 @@ app.post('/upload', upload.single('pdf'), async (req, res) => {
             // Se lançar erro, podemos prosseguir
         }
 
-        console.log('Arquivo recebido:', req.file);
-        
         // Criar diretório para o flipbook
         await fs.mkdir(flipbookDir, { recursive: true });
-        
-        console.log('Diretório criado:', flipbookDir);
         
         const pdfDestination = path.join(flipbookDir, 'document.pdf');
         
         // Mover o PDF para o diretório do flipbook
         await fs.rename(req.file.path, pdfDestination);
-        
-        console.log('PDF movido para:', pdfDestination);
 
         // Criar o arquivo HTML do flipbook
         const htmlPath = path.join(flipbookDir, 'index.html');
         await fs.writeFile(htmlPath, await generateFlipbookHtml());
-        
-        console.log('HTML gerado em:', htmlPath);
 
         const flipbookUrl = `/flipbooks/${flipbookName}`;
         const iframeCode = `<iframe src="${flipbookUrl}/index.html" width="100%" height="600" frameborder="0"></iframe>`;
