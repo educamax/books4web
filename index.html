@@ -33,9 +33,16 @@
                         <p class="text-xs text-gray-500">O nome será usado na URL do flipbook. Use apenas letras, números e hífen.</p>
                     </div>
 
-                    <div class="form-group">
-                        <label for="accessKey">Chave de Acesso:</label>
-                        <input type="password" id="accessKey" required>
+                    <div class="space-y-2">
+                        <label for="accessKey" class="block text-sm font-medium text-gray-700">
+                            Chave de Acesso
+                        </label>
+                        <input type="password" 
+                               id="accessKey" 
+                               name="accessKey"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Digite a chave de acesso"
+                               required>
                     </div>
 
                     <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative transition-colors" id="dropArea">
