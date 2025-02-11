@@ -1,21 +1,25 @@
 # Books4Web - Conversor de PDF para Flipbook
 
-Uma ferramenta web para converter arquivos PDF em Flipbooks interativos online, com suporte a navegação por touch e URLs personalizadas.
+Uma ferramenta web para converter arquivos PDF em Flipbooks interativos online, com suporte a navegação por touch, URLs personalizadas e armazenamento em nuvem.
 
 ## Características
 
 - Upload de arquivos PDF (até 20MB)
+- Autenticação por chave de acesso
 - URLs personalizadas para cada flipbook
 - Interface responsiva e moderna
 - Suporte a touch para dispositivos móveis
 - Navegação por teclado (setas)
 - Geração de código para incorporação
-- Sem necessidade de banco de dados
+- Armazenamento em nuvem via Supabase
+- Listagem de flipbooks com ações rápidas
+- Feedback visual para ações do usuário
 
 ## Requisitos do Sistema
 
 - Node.js (versão 14 ou superior)
 - NPM (Node Package Manager)
+- Conta no Supabase para armazenamento
 
 ## Instalação
 
@@ -27,10 +31,15 @@ Uma ferramenta web para converter arquivos PDF em Flipbooks interativos online, 
 npm install
 ```
 
-4. Crie as pastas necessárias:
-
-```bash
-mkdir -p public/uploads public/flipbooks
+4. Configure as variáveis de ambiente:
+   - Crie um arquivo `.env` na raiz do projeto
+   - Adicione as seguintes variáveis:
+```env
+SUPABASE_URL=sua_url_do_supabase
+SUPABASE_ANON_KEY=sua_chave_anonima_do_supabase
+ACCESS_KEY=sua_chave_de_acesso
+NODE_ENV=development
+PORT=3000
 ```
 
 5. Inicie o servidor:
@@ -43,24 +52,15 @@ O aplicativo estará disponível em `http://localhost:3000`
 
 ## Implantação em Produção
 
-### Preparação
+### Vercel (Recomendado)
 
-1. Certifique-se de que todas as dependências estão instaladas:
-```bash
-npm install --production
-```
-
-2. Configure as permissões das pastas:
-```bash
-chmod 755 public/uploads public/flipbooks
-```
-
-### Hospedagem Compartilhada (cPanel)
-
-1. Faça upload de todos os arquivos para sua hospedagem
-2. Configure o Node.js no cPanel (se disponível)
-3. Configure o domínio/subdomínio para apontar para a pasta do projeto
-4. Inicie o aplicativo usando o gerenciador de processos do cPanel
+1. Faça fork do repositório no GitHub
+2. Conecte o repositório ao Vercel
+3. Configure as variáveis de ambiente no Vercel:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
+   - `ACCESS_KEY`
+   - `NODE_ENV=production`
 
 ### VPS/Servidor Dedicado
 
@@ -95,13 +95,6 @@ server {
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
     }
-
-    # Configuração para arquivos estáticos
-    location /flipbooks {
-        alias /caminho/para/public/flipbooks;
-        expires 30d;
-        add_header Cache-Control "public, no-transform";
-    }
 }
 ```
 
@@ -109,32 +102,41 @@ server {
 
 ```
 /
-├── public/
-│   ├── uploads/     # Arquivos PDF temporários
-│   ├── flipbooks/   # Flipbooks gerados
-│   └── index.html   # Interface do usuário
 ├── server.js        # Servidor Node.js
+├── supabase.js      # Configuração do Supabase
+├── index.html       # Interface do usuário
 ├── package.json     # Dependências
+├── vercel.json      # Configuração do Vercel
+├── .env            # Variáveis de ambiente (não versionado)
 └── README.md        # Este arquivo
 ```
 
-## Manutenção
+## Funcionalidades
 
-### Limpeza de Arquivos Temporários
+### Upload de PDF
+- Suporte a drag-and-drop
+- Validação de tipo de arquivo
+- Limite de tamanho (20MB)
+- Feedback visual do progresso
 
-Os arquivos temporários são automaticamente limpos em caso de erro, mas você pode criar um cron job para limpar arquivos antigos:
+### Autenticação
+- Proteção por chave de acesso
+- Configurável via variável de ambiente
+- Necessária para upload de PDFs
 
-```bash
-# Exemplo de cron job para limpar arquivos temporários com mais de 24 horas
-0 0 * * * find /caminho/para/public/uploads -type f -name "temp-*" -mtime +1 -exec rm {} \;
-```
+### Visualização
+- Interface responsiva
+- Modo de página única em dispositivos móveis
+- Modo de página dupla em desktop
+- Controles de navegação intuitivos
+- Suporte a gestos touch
 
-## Limitações
-
-- Tamanho máximo do arquivo: 20MB
-- Formato suportado: PDF
-- Os arquivos PDF são mantidos no servidor
-- Necessário espaço em disco suficiente para armazenar os PDFs e flipbooks
+### Gerenciamento
+- Listagem de todos os flipbooks
+- Botões de ação rápida
+- Cópia de código de incorporação
+- Exclusão de flipbooks
+- Feedback visual para ações
 
 ## Suporte a Navegadores
 
@@ -148,6 +150,28 @@ Os arquivos temporários são automaticamente limpos em caso de erro, mas você 
 ## Tecnologias Utilizadas
 
 - Node.js + Express
-- pdf2pic para conversão de PDF
+- Supabase para armazenamento
+- PDF.js para renderização
 - Turn.js para navegação interativa
-- Tailwind CSS para estilização 
+- Tailwind CSS para estilização
+- Vercel para hospedagem
+
+## Segurança
+
+- Validação de tipos de arquivo
+- Proteção por chave de acesso
+- Armazenamento seguro em nuvem
+- Sanitização de nomes de arquivo
+- Limitação de tamanho de upload
+
+## Contribuição
+
+1. Faça um fork do projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
+
+## Licença
+
+Este projeto está licenciado sob a Licença MIT - veja o arquivo LICENSE para detalhes. 
