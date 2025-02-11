@@ -73,7 +73,6 @@ async function initializeApp() {
         console.log('Diretório base:', baseDirectory);
 
         // Servir arquivos estáticos
-        app.use(express.static(baseDirectory));
         app.use('/flipbooks', express.static(path.join(baseDirectory, 'flipbooks')));
         app.use(express.json());
 
@@ -96,7 +95,7 @@ async function initializeApp() {
 
         // Rota principal
         app.get('/', (req, res) => {
-            res.sendFile(path.join(baseDirectory, 'index.html'));
+            res.sendFile(path.join(__dirname, 'index.html'));
         });
 
         // Rota para upload do PDF
