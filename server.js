@@ -1,7 +1,6 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
 const fs = require('fs').promises;
 
 const app = express();
@@ -9,10 +8,11 @@ const port = process.env.PORT || 3000;
 
 // Função para garantir que os diretórios existam
 async function ensureDirectoriesExist() {
+    const baseDir = process.env.VERCEL ? '/tmp' : path.join(__dirname, 'public');
     const dirs = [
-        path.join(__dirname, 'public'),
-        path.join(__dirname, 'public/uploads'),
-        path.join(__dirname, 'public/flipbooks')
+        baseDir,
+        path.join(baseDir, 'uploads'),
+        path.join(baseDir, 'flipbooks')
     ];
 
     for (const dir of dirs) {
@@ -23,6 +23,7 @@ async function ensureDirectoriesExist() {
             console.log('Diretório criado:', dir);
         }
     }
+    return baseDir;
 }
 
 // Função para sanitizar o nome do flipbook
@@ -33,10 +34,12 @@ function sanitizeFlipbookName(name) {
               .replace(/^-|-$/g, '');
 }
 
+let baseDirectory = '';
+
 // Configuração do Multer para upload de arquivos
 const storage = multer.diskStorage({
     destination: async (req, file, cb) => {
-        const uploadDir = path.join(__dirname, 'public/uploads');
+        const uploadDir = path.join(baseDirectory, 'uploads');
         try {
             await fs.access(uploadDir);
         } catch {
@@ -63,92 +66,107 @@ const upload = multer({
     }
 });
 
-// Garantir que os diretórios existam ao iniciar o servidor
-ensureDirectoriesExist().then(() => {
-    console.log('Diretórios verificados e criados se necessário');
-}).catch(console.error);
-
-// Servir arquivos estáticos
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/flipbooks', express.static(path.join(__dirname, 'public/flipbooks')));
-app.use(express.json());
-
-// Rota para verificar se o nome já existe
-app.get('/check-name/:name', async (req, res) => {
+// Inicialização assíncrona
+async function initializeApp() {
     try {
-        const name = sanitizeFlipbookName(req.params.name);
-        const flipbookDir = path.join(__dirname, 'public/flipbooks', name);
-        
-        try {
-            await fs.access(flipbookDir);
-            res.json({ exists: true });
-        } catch {
-            res.json({ exists: false });
-        }
-    } catch (error) {
-        res.status(500).json({ error: 'Erro ao verificar o nome.' });
-    }
-});
+        baseDirectory = await ensureDirectoriesExist();
+        console.log('Diretório base:', baseDirectory);
 
-// Rota principal
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+        // Servir arquivos estáticos
+        app.use(express.static(baseDirectory));
+        app.use('/flipbooks', express.static(path.join(baseDirectory, 'flipbooks')));
+        app.use(express.json());
 
-// Rota para upload do PDF
-app.post('/upload', upload.single('pdf'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'Nenhum arquivo foi enviado.' });
-        }
+        // Rota para verificar se o nome já existe
+        app.get('/check-name/:name', async (req, res) => {
+            try {
+                const name = sanitizeFlipbookName(req.params.name);
+                const flipbookDir = path.join(baseDirectory, 'flipbooks', name);
+                
+                try {
+                    await fs.access(flipbookDir);
+                    res.json({ exists: true });
+                } catch {
+                    res.json({ exists: false });
+                }
+            } catch (error) {
+                res.status(500).json({ error: 'Erro ao verificar o nome.' });
+            }
+        });
 
-        if (!req.body.flipbookName) {
-            return res.status(400).json({ error: 'Nome do flipbook não fornecido.' });
-        }
+        // Rota principal
+        app.get('/', (req, res) => {
+            res.sendFile(path.join(baseDirectory, 'index.html'));
+        });
 
-        const flipbookName = sanitizeFlipbookName(req.body.flipbookName);
-        const flipbookDir = path.join(__dirname, 'public/flipbooks', flipbookName);
-        
-        try {
-            await fs.access(flipbookDir);
-            return res.status(400).json({ error: 'Este nome já está em uso.' });
-        } catch {
-            // Se lançar erro, podemos prosseguir
-        }
+        // Rota para upload do PDF
+        app.post('/upload', upload.single('pdf'), async (req, res) => {
+            try {
+                if (!req.file) {
+                    return res.status(400).json({ error: 'Nenhum arquivo foi enviado.' });
+                }
 
-        // Criar diretório para o flipbook
-        await fs.mkdir(flipbookDir, { recursive: true });
-        
-        const pdfDestination = path.join(flipbookDir, 'document.pdf');
-        
-        // Mover o PDF para o diretório do flipbook
-        await fs.rename(req.file.path, pdfDestination);
+                if (!req.body.flipbookName) {
+                    return res.status(400).json({ error: 'Nome do flipbook não fornecido.' });
+                }
 
-        // Criar o arquivo HTML do flipbook
-        const htmlPath = path.join(flipbookDir, 'index.html');
-        await fs.writeFile(htmlPath, await generateFlipbookHtml());
+                const flipbookName = sanitizeFlipbookName(req.body.flipbookName);
+                const flipbookDir = path.join(baseDirectory, 'flipbooks', flipbookName);
+                
+                try {
+                    await fs.access(flipbookDir);
+                    return res.status(400).json({ error: 'Este nome já está em uso.' });
+                } catch {
+                    // Se lançar erro, podemos prosseguir
+                }
 
-        const flipbookUrl = `/flipbooks/${flipbookName}`;
-        const iframeCode = `<iframe src="${flipbookUrl}/index.html" width="100%" height="600" frameborder="0"></iframe>`;
+                // Criar diretório para o flipbook
+                await fs.mkdir(flipbookDir, { recursive: true });
+                
+                const pdfDestination = path.join(flipbookDir, 'document.pdf');
+                
+                // Mover o PDF para o diretório do flipbook
+                await fs.rename(req.file.path, pdfDestination);
 
-        res.json({
-            success: true,
-            flipbookUrl: flipbookUrl + '/index.html',
-            iframeCode
+                // Criar o arquivo HTML do flipbook
+                const htmlPath = path.join(flipbookDir, 'index.html');
+                await fs.writeFile(htmlPath, await generateFlipbookHtml());
+
+                const flipbookUrl = `/flipbooks/${flipbookName}`;
+                const iframeCode = `<iframe src="${flipbookUrl}/index.html" width="100%" height="600" frameborder="0"></iframe>`;
+
+                res.json({
+                    success: true,
+                    flipbookUrl: flipbookUrl + '/index.html',
+                    iframeCode
+                });
+
+            } catch (error) {
+                console.error('Erro detalhado:', error);
+                if (req.file) {
+                    try {
+                        await fs.unlink(req.file.path);
+                    } catch (unlinkError) {
+                        console.error('Erro ao limpar arquivo temporário:', unlinkError);
+                    }
+                }
+                res.status(500).json({ error: 'Erro ao processar o PDF.' });
+            }
+        });
+
+        // Iniciar o servidor
+        app.listen(port, () => {
+            console.log(`Servidor rodando em http://localhost:${port}`);
         });
 
     } catch (error) {
-        console.error('Erro detalhado:', error);
-        if (req.file) {
-            try {
-                await fs.unlink(req.file.path);
-            } catch (unlinkError) {
-                console.error('Erro ao limpar arquivo temporário:', unlinkError);
-            }
-        }
-        res.status(500).json({ error: 'Erro ao processar o PDF.' });
+        console.error('Erro na inicialização:', error);
+        process.exit(1);
     }
-});
+}
+
+// Iniciar o aplicativo
+initializeApp();
 
 async function generateFlipbookHtml() {
     return `<!DOCTYPE html>
@@ -548,8 +566,4 @@ async function generateFlipbookHtml() {
     </script>
 </body>
 </html>`;
-}
-
-app.listen(port, () => {
-    console.log(`Servidor rodando em http://localhost:${port}`);
-}); 
+} 
