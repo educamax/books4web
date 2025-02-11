@@ -1,0 +1,31 @@
+# Dependências
+node_modules/
+
+# Arquivos de ambiente
+.env
+.env.local
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de upload e flipbooks gerados
+public/uploads/*
+public/flipbooks/*
+!public/uploads/.gitkeep
+!public/flipbooks/.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
+
+# Arquivos temporários
+/tmp
+*.tmp
+*.temp
+
+# IDEs e editores
+.idea/
+.vscode/
+*.swp
+*.swo 
