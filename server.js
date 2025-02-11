@@ -199,6 +199,12 @@ async function initializeApp() {
                     return res.status(400).json({ error: 'Nome do flipbook não fornecido.' });
                 }
 
+                // Verificar a chave de acesso
+                const accessKey = req.body.accessKey;
+                if (!accessKey || accessKey !== process.env.ACCESS_KEY) {
+                    return res.status(401).json({ error: 'Chave de acesso inválida.' });
+                }
+
                 const flipbookName = sanitizeFlipbookName(req.body.flipbookName);
 
                 // Upload do PDF para o Supabase
