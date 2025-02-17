@@ -8,19 +8,30 @@
     ],
     "routes": [
         {
-            "src": "/view/(.*)",
-            "dest": "/server.js",
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Cache-Control": "public, max-age=0, must-revalidate"
-            }
+            "src": "/view/(?<flipbook>[^/]+)",
+            "dest": "/server.js?flipbook=$flipbook"
+        },
+        {
+            "src": "/list-flipbooks",
+            "dest": "/server.js"
+        },
+        {
+            "src": "/upload",
+            "methods": ["POST"],
+            "dest": "/server.js"
+        },
+        {
+            "src": "/check-name/(?<name>[^/]+)",
+            "dest": "/server.js"
+        },
+        {
+            "src": "/flipbook/(?<name>[^/]+)",
+            "methods": ["DELETE"],
+            "dest": "/server.js"
         },
         {
             "src": "/(.*)",
-            "dest": "/server.js",
-            "headers": {
-                "Access-Control-Allow-Origin": "*"
-            }
+            "dest": "/server.js"
         }
     ]
 } 

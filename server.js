@@ -621,7 +621,12 @@ async function initializeApp() {
                     .getPublicUrl(`${flipbookName}/script.js`);
 
                 // Criar uma rota dinâmica para servir o flipbook
-                app.get(`/view/${flipbookName}`, (req, res) => {
+                app.get(`/view/:flipbookName`, (req, res) => {
+                    // Adiciona headers para garantir acesso público
+                    res.setHeader('Access-Control-Allow-Origin', '*');
+                    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+                    
+                    const flipbookName = req.params.flipbookName;
                     res.send(`<!DOCTYPE html>
 <html>
 <head>
