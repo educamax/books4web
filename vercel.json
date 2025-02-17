@@ -8,8 +8,19 @@
     ],
     "routes": [
         {
+            "src": "/view/(.*)",
+            "dest": "/server.js",
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Cache-Control": "public, max-age=0, must-revalidate"
+            }
+        },
+        {
             "src": "/(.*)",
-            "dest": "/server.js"
+            "dest": "/server.js",
+            "headers": {
+                "Access-Control-Allow-Origin": "*"
+            }
         }
     ]
 } 
