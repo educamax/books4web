@@ -120,11 +120,13 @@ async function initializeApp() {
                 // Transformar cada arquivo em um flipbook
                 const flipbooks = folders.map(item => {
                     const name = item.name.split('/')[0];
-                    // Usar a URL do Vercel em produção
-                    const baseUrl = process.env.VERCEL_URL 
-                        ? `https://${process.env.VERCEL_URL}`
-                        : `${req.protocol}://${req.get('host')}`;
-                    const viewUrl = `${baseUrl}/view/${name}`;
+                    // Obter a URL pública diretamente do Supabase
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('flipbooks')
+                        .getPublicUrl(`${name}/document.pdf`);
+                    
+                    // Construir a URL do flipbook usando a URL pública do PDF
+                    const viewUrl = publicUrl.replace('document.pdf', 'index.html');
                     console.log('URL gerada para', name + ':', viewUrl);
                     return {
                         name,
@@ -223,7 +225,7 @@ async function initializeApp() {
                     .from('flipbooks')
                     .getPublicUrl(`${flipbookName}/document.pdf`);
 
-                console.log('URL do PDF:', pdfUrl); // Log para debug
+                console.log('URL do PDF:', pdfUrl);
 
                 // Gerar e fazer upload do CSS
                 const cssContent = `
@@ -620,20 +622,16 @@ async function initializeApp() {
                     .from('flipbooks')
                     .getPublicUrl(`${flipbookName}/script.js`);
 
-                // Criar uma rota dinâmica para servir o flipbook
-                app.get(`/view/:flipbookName`, (req, res) => {
-                    // Adiciona headers para garantir acesso público
-                    res.setHeader('Access-Control-Allow-Origin', '*');
-                    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
-                    
-                    const flipbookName = req.params.flipbookName;
-                    res.send(`<!DOCTYPE html>
+                // Gerar HTML do flipbook
+                const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
     <title>Flipbook</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="${cssUrl}">
+    <style>
+    ${cssContent}
+    </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/3/turn.min.js"></script>
@@ -657,23 +655,33 @@ async function initializeApp() {
         </span>
         <button id="nextBtn">Próxima ❯</button>
     </div>
-    <script src="${jsUrl}"></script>
+    <script>
+    ${jsContent.replace('${pdfUrl}', pdfUrl)}
+    </script>
 </body>
-</html>`);
-                });
+</html>`;
 
-                // Usar a URL do Vercel em produção
-                const baseUrl = process.env.VERCEL_URL 
-                    ? `https://${process.env.VERCEL_URL}`
-                    : `${req.protocol}://${req.get('host')}`;
-                const viewUrl = `${baseUrl}/view/${flipbookName}`;
-                console.log('URL do Flipbook:', viewUrl);
+                // Upload do HTML para o Supabase
+                const { error: htmlError } = await supabase.storage
+                    .from('flipbooks')
+                    .upload(`${flipbookName}/index.html`, Buffer.from(htmlContent), {
+                        contentType: 'text/html',
+                        cacheControl: '3600',
+                        upsert: true
+                    });
 
-                const iframeCode = `<iframe src="${viewUrl}" width="100%" height="600" frameborder="0" allow="fullscreen"></iframe>`;
+                if (htmlError) throw htmlError;
+
+                // Obter a URL pública do HTML
+                const { data: { publicUrl: htmlUrl } } = supabase.storage
+                    .from('flipbooks')
+                    .getPublicUrl(`${flipbookName}/index.html`);
+
+                const iframeCode = `<iframe src="${htmlUrl}" width="100%" height="600" frameborder="0" allow="fullscreen"></iframe>`;
 
                 res.json({
                     success: true,
-                    flipbookUrl: viewUrl,
+                    flipbookUrl: htmlUrl,
                     pdfUrl,
                     iframeCode
                 });
