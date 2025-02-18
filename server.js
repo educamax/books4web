@@ -120,13 +120,11 @@ async function initializeApp() {
                 // Transformar cada arquivo em um flipbook
                 const flipbooks = folders.map(item => {
                     const name = item.name.split('/')[0];
-                    // Obter a URL pública diretamente do Supabase
-                    const { data: { publicUrl } } = supabase.storage
-                        .from('flipbooks')
-                        .getPublicUrl(`${name}/document.pdf`);
-                    
-                    // Construir a URL do flipbook usando a URL pública do PDF
-                    const viewUrl = publicUrl.replace('document.pdf', 'index.html');
+                    // Usar a URL do Vercel em produção para a rota de visualização
+                    const baseUrl = process.env.VERCEL_URL 
+                        ? `https://${process.env.VERCEL_URL}`
+                        : `${req.protocol}://${req.get('host')}`;
+                    const viewUrl = `${baseUrl}/view/${name}`;
                     console.log('URL gerada para', name + ':', viewUrl);
                     return {
                         name,
@@ -677,11 +675,71 @@ async function initializeApp() {
                     .from('flipbooks')
                     .getPublicUrl(`${flipbookName}/index.html`);
 
-                const iframeCode = `<iframe src="${htmlUrl}" width="100%" height="600" frameborder="0" allow="fullscreen"></iframe>`;
+                // Criar uma rota dinâmica para servir o flipbook
+                app.get('/view/:flipbookName', async (req, res) => {
+                    try {
+                        const flipbookName = req.params.flipbookName;
+                        
+                        // Obter a URL do PDF do Supabase
+                        const { data: { publicUrl: pdfUrl } } = supabase.storage
+                            .from('flipbooks')
+                            .getPublicUrl(`${flipbookName}/document.pdf`);
+
+                        res.send(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Flipbook</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+    ${cssContent}
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/3/turn.min.js"></script>
+</head>
+<body>
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <div>Carregando documento...</div>
+        <div class="progress">0%</div>
+    </div>
+    <div id="error" class="error"></div>
+    <div id="flipbook-outer-container">
+        <div id="flipbook-container">
+            <div id="flipbook"></div>
+        </div>
+    </div>
+    <div class="controls">
+        <button id="prevBtn">❮ Anterior</button>
+        <span class="page-info">
+            Página <span id="currentPage">0</span> de <span id="totalPages">0</span>
+        </span>
+        <button id="nextBtn">Próxima ❯</button>
+    </div>
+    <script>
+    ${jsContent.replace('${pdfUrl}', pdfUrl)}
+    </script>
+</body>
+</html>`);
+                    } catch (error) {
+                        console.error('Erro ao servir flipbook:', error);
+                        res.status(500).send('Erro ao carregar o flipbook');
+                    }
+                });
+
+                // Usar a URL do Vercel em produção
+                const baseUrl = process.env.VERCEL_URL 
+                    ? `https://${process.env.VERCEL_URL}`
+                    : `${req.protocol}://${req.get('host')}`;
+                const viewUrl = `${baseUrl}/view/${flipbookName}`;
+                console.log('URL do Flipbook:', viewUrl);
+
+                const iframeCode = `<iframe src="${viewUrl}" width="100%" height="600" frameborder="0" allow="fullscreen"></iframe>`;
 
                 res.json({
                     success: true,
-                    flipbookUrl: htmlUrl,
+                    flipbookUrl: viewUrl,
                     pdfUrl,
                     iframeCode
                 });
