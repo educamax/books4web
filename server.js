@@ -530,9 +530,9 @@ async function initializeApp() {
                 // Transformar cada arquivo em um flipbook
                 const flipbooks = folders.map(item => {
                     const name = item.name.split('/')[0];
-                    // Usar a URL do Vercel em produção para a rota de visualização
-                    const baseUrl = process.env.VERCEL_URL 
-                        ? `https://${process.env.VERCEL_URL}`
+                    // Usar o domínio principal em produção
+                    const baseUrl = process.env.NODE_ENV === 'production'
+                        ? 'https://books4web.vercel.app'
                         : `${req.protocol}://${req.get('host')}`;
                     const viewUrl = `${baseUrl}/view/${name}`;
                     console.log('URL gerada para', name + ':', viewUrl);
@@ -635,9 +635,9 @@ async function initializeApp() {
 
                 console.log('URL do PDF:', pdfUrl);
 
-                // Usar a URL do Vercel em produção
-                const baseUrl = process.env.VERCEL_URL 
-                    ? `https://${process.env.VERCEL_URL}`
+                // Usar o domínio principal em produção
+                const baseUrl = process.env.NODE_ENV === 'production'
+                    ? 'https://books4web.vercel.app'
                     : `${req.protocol}://${req.get('host')}`;
                 const viewUrl = `${baseUrl}/view/${flipbookName}`;
                 console.log('URL do Flipbook:', viewUrl);
